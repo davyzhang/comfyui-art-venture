@@ -342,13 +342,22 @@ function patchValueSetter(nodeType, widgetName) {
       if (pathWidget.type === 'customtext' && !editing) {
         pathWidget.inputEl.value = value;
       }
-      delete app.nodeOutputs[this.id]
+      delete app.nodeOutputs[this.id];
     };
 
-    Object.defineProperty(pathWidget, 'value', {
-      set: setter,
-      get: () => pathWidget._value,
-    });
+    // Check if the property exists and is configurable before redefining it
+    const descriptor = Object.getOwnPropertyDescriptor(pathWidget, 'value');
+    if (!descriptor || descriptor.configurable) {
+      Object.defineProperty(pathWidget, 'value', {
+        configurable: true, // Make it configurable for future changes
+        set: setter,
+        get: () => pathWidget._value,
+      });
+    } else {
+      console.warn("Cannot redefine 'value' property on widget - it's non-configurable");
+      pathWidget.originalValue = pathWidget.value; // Store original value
+      pathWidget.setValue = setter; // Provide alternative method
+    }
 
     if (pathWidget.type === 'customtext') {
       pathWidget.inputEl.addEventListener('focus', (e) => {
@@ -366,6 +375,7 @@ function patchValueSetter(nodeType, widgetName) {
     pathWidget.value = pathWidget._value;
   });
 }
+
 
 function addVideoPreview(nodeType, widgetName) {
   const createVideoNode = (url) => {
@@ -571,3 +581,4 @@ app.registerExtension({
     }
   },
 });
+
